@@ -1,3 +1,4 @@
+Visheshta from IIT Roorkee, Civil Engineering 
 # 🥗 Smart Meal Planner (RAG + LoRA) v3.1.0
 
 A multi-user AI meal planner that uses RAG and LoRA to create personalized meal plans (1–6 meals/day) with a beautiful Streamlit dashboard and Excel/CSV batch mode.
@@ -96,3 +97,4 @@ Place images in the `assets/` directory:
 ├── logs/                  # Evaluation logs
 └── examples/              # Example CSV templates
 ```
+
