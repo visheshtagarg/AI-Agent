@@ -1,0 +1,168 @@
+{
+  "project_name": "Advanced Diet & Meal Recommender Agent",
+  "author": {
+    "name": "Visheshta Garg",
+    "university": "IIT Roorkee",
+    "department": "Civil Engineering",
+    "degree": "B.Tech"
+  },
+  "description": "An AI multi-agent system that automatically generates personalized daily meal plans using reasoning, planning, retrieval-augmented generation (RAG), and LoRA fine-tuned meal generation models. The system optimizes for user calorie goals and evaluates nutritional diversity.",
+  "tech_stack": {
+    "language": "Python 3.10+",
+    "frameworks": ["Streamlit", "LangChain", "Transformers", "PEFT", "cvxpy"],
+    "vector_store": ["ChromaDB (default)", "FAISS (optional)"],
+    "ml": ["torch", "datasets", "sentence-transformers", "pandas", "numpy"],
+    "ui": ["Streamlit", "CLI"],
+    "logging": ["loguru"]
+  },
+  "architecture": {
+    "agents": [
+      {
+        "name": "PlannerAgent",
+        "role": "Reason over user goals (weight loss, maintain, muscle gain) to split target calories across meals.",
+        "input": ["User profile"],
+        "output": ["Meal calorie plan per meal"],
+        "methods": ["Rule-based allocation", "configurable ratios"]
+      },
+      {
+        "name": "RAGRetrieverAgent",
+        "role": "Retrieves meal ideas and nutrition facts from a vector database (Chroma/FAISS).",
+        "input": ["Query text"],
+        "output": ["Top-K relevant meal entries with macros"],
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "index_path": "data/vectorstore/chroma_store"
+      },
+      {
+        "name": "MealGeneratorAgent",
+        "role": "Generates meal plans using a LoRA fine-tuned model trained on nutrition data + recipe pairs.",
+        "base_model": "google/flan-t5-base",
+        "lora_path": "models/lora_meal_generator/",
+        "input": ["User profile", "Meal calorie plan", "RAG context"],
+        "output": ["Raw meal suggestions"]
+      },
+      {
+        "name": "OptimizerAgent",
+        "role": "Optimizes total calorie and macro distribution using LP via cvxpy to ensure constraints are met.",
+        "method": "Linear Programming (minimize deviation, balance macros)"
+      },
+      {
+        "name": "EvaluatorAgent",
+        "role": "Evaluates generated meals against target goals.",
+        "metrics": ["calorie_mape", "macro_match_score", "diversity_score"],
+        "goal_thresholds": {
+          "calorie_mape": "<=10%",
+          "macro_match_score": ">=0.85",
+          "diversity_score": ">=0.6"
+        }
+      },
+      {
+        "name": "CoachAgent",
+        "role": "Formats, explains, and presents the final plan with improvement tips.",
+        "output": ["Human-readable JSON for UI"]
+      }
+    ],
+    "flow": "User → Planner → RAG Retriever → Meal Generator (LoRA) → Optimizer → Evaluator → Coach → UI"
+  },
+  "fine_tuning": {
+    "base_model": "google/flan-t5-base",
+    "method": "LoRA (PEFT)",
+    "dataset": {
+      "path": "data/meal_dataset.csv",
+      "schema": ["input_text (user profile + calorie goal)", "target_text (meal plan)"],
+      "size": 2000
+    },
+    "training_params": {
+      "epochs": 3,
+      "batch_size": 8,
+      "learning_rate": 0.0003,
+      "optimizer": "AdamW",
+      "fp16": true
+    },
+    "output_dir": "models/lora_meal_generator",
+    "validation_metrics": ["loss", "BLEU", "ROUGE"]
+  },
+  "rag_integration": {
+    "index_script": "scripts/build_rag_index.py",
+    "vector_store": "ChromaDB",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "retrieval_fields": ["meal_name", "ingredients", "calories", "macros"],
+    "chunk_size": 256,
+    "top_k": 5
+  },
+  "evaluation": {
+    "metrics": {
+      "calorie_mape": "Mean Absolute Percentage Error of calorie prediction",
+      "macro_match_score": "Cosine similarity of macro ratios",
+      "diversity_score": "Unique meal items / total items"
+    },
+    "targets": {
+      "calorie_mape": "<=0.10",
+      "macro_match_score": ">=0.85"
+    },
+    "logging": {
+      "framework": "loguru",
+      "storage": "data/logs/evaluation.json"
+    }
+  },
+  "ui": {
+    "type": "Streamlit",
+    "entrypoint": "app.py",
+    "features": [
+      "User input form for profile & goal",
+      "Meal plan generation with RAG context",
+      "Interactive visualization of calories/macros using Plotly",
+      "Evaluation summary with metrics and insights",
+      "Download JSON/CSV of final plan"
+    ]
+  },
+  "repo_structure": {
+    "root": ["README.md", "requirements.txt", "app.py"],
+    "folders": {
+      "agents": [
+        "planner_agent.py",
+        "meal_generator_agent.py",
+        "rag_retriever_agent.py",
+        "optimizer_agent.py",
+        "evaluator_agent.py",
+        "coach_agent.py"
+      ],
+      "data": ["meal_dataset.csv", "vectorstore/"],
+      "models": ["lora_meal_generator/"],
+      "scripts": ["train_lora.py", "build_rag_index.py", "evaluate.py"],
+      "utils": ["helpers.py", "metrics.py"],
+      "logs": []
+    }
+  },
+  "requirements": [
+    "streamlit",
+    "langchain",
+    "transformers",
+    "peft",
+    "torch",
+    "datasets",
+    "sentence-transformers",
+    "chromadb",
+    "faiss-cpu",
+    "pandas",
+    "numpy",
+    "cvxpy",
+    "plotly",
+    "loguru"
+  ],
+  "deliverables": [
+    "Source code (with modular agents)",
+    "Fine-tuning setup and report",
+    "Evaluation results (metrics & qualitative analysis)",
+    "Interaction logs",
+    "Architecture diagram + document",
+    "Demo video (optional)"
+  ],
+  "usage_notes": "Run `streamlit run app.py`. Ensure Chroma/FAISS index is built with meal data before generation. Place LoRA fine-tuned model under models/lora_meal_generator/.",
+  "next_steps": [
+    "1. Run build_rag_index.py with your meal dataset to populate the vector DB.",
+    "2. Fine-tune LoRA on instruction-style meal generation dataset.",
+    "3. Test multi-agent orchestration with LangChain or LangGraph.",
+    "4. Expand evaluation with user feedback or A/B tests."
+  ]
+}
+

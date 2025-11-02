@@ -1,0 +1,3 @@
+user_id,age,sex,height_cm,weight_kg,activity_level,goal,calorie_target,allergies,dietary_pref,dislikes,meal_count_preference
+user_001,28,M,175,70,moderate,maintain,2500,peanuts,omnivore,cilantro,4
+
