@@ -1,0 +1,281 @@
+{
+  "project": {
+    "name": "advanced-diet-calorie-recommender-agent",
+    "display_name": "Advanced Diet & Calorie Recommender (Batch Mode)",
+    "version": "1.0.0",
+    "description": "Multi-agent system (Planner + Executor + Evaluator) for generating batch diet & calorie recommendations. Integrates a LoRA fine-tuned model, RAG retrieval, Streamlit UI, CLI, and evaluation + logging.",
+    "author": "Your Name <you@example.com>",
+    "license": "MIT"
+  },
+  "manifestVersion": "1.0",
+  "environment": {
+    "python_version": "3.11",
+    "dependencies": [
+      "transformers>=4.40.0",
+      "accelerate",
+      "datasets",
+      "peft",
+      "sentence-transformers",
+      "faiss-cpu",
+      "langchain",
+      "streamlit",
+      "uvicorn",
+      "fastapi",
+      "pydantic",
+      "sqlalchemy",
+      "alembic",
+      "pandas",
+      "numpy",
+      "scikit-learn",
+      "gunicorn",
+      "python-dotenv",
+      "loguru"
+    ],
+    "docker": {
+      "base_image": "python:3.11-slim",
+      "expose_ports": [8501, 8000],
+      "run_commands": [
+        "pip install -r requirements.txt",
+        "streamlit run app/streamlit_app.py --server.port $STREAMLIT_PORT &",
+        "uvicorn app.api:app --host 0.0.0.0 --port $API_PORT"
+      ]
+    },
+    "env_schema": {
+      "OPENAI_API_KEY": "<string - if using OpenAI>",
+      "HF_API_TOKEN": "<string - if using Hugging Face inference/train>",
+      "VECTOR_DB_PATH": "data/vectorstore/faiss.index",
+      "S3_BUCKET": "<optional s3 bucket for logs/models>",
+      "SQLITE_URL": "sqlite:///data/logs.db",
+      "BASE_MODEL_ID": "meta-llama/Llama-2-7b-chat-hf",
+      "LORA_PATH": "models/lora/diet-lora.pt",
+      "EMBEDDING_MODEL": "sentence-transformers/all-MiniLM-L6-v2",
+      "STREAMLIT_PORT": "8501",
+      "API_PORT": "8000"
+    }
+  },
+  "architecture": {
+    "overview": "Planner -> (Retriever + RAG) -> Executor (LoRA model) -> Evaluator -> Logger",
+    "agents": {
+      "planner": {
+        "role": "High-level decomposition of user CSV tasks into per-row actions, scheduling, and constraints handling (calorie goals, allergies, preferences).",
+        "input": ["user_batch_csv", "user_profile_defaults", "global_nutrient_constraints"],
+        "output": ["per_row_plan_objects", "retrieval_queries"]
+      },
+      "retriever": {
+        "role": "RAG retriever: given a retrieval query, fetch top-K relevant nutrition facts, recipes, clinical guidelines from vector DB.",
+        "vectorstore": {
+          "type": "faiss",
+          "path": "$VECTOR_DB_PATH",
+          "embedding_model": "$EMBEDDING_MODEL",
+          "top_k": 8
+        }
+      },
+      "executor": {
+        "role": "LoRA-adapted generator that synthesizes personalized meal plans & calorie breakdowns. Accepts plan + RAG context + templates.",
+        "model": {
+          "base_model": "$BASE_MODEL_ID",
+          "lora": "$LORA_PATH",
+          "max_tokens": 512,
+          "temperature": 0.0,
+          "system_prompt_template_path": "prompts/system_prompt.md"
+        },
+        "safety_filters": ["nutrient_limits", "clinical_flagging"]
+      },
+      "evaluator": {
+        "role": "Calculates evaluation metrics (nutrient compliance, calorie deviation, diversity score, recipe repetition) and quality checks.",
+        "metrics": ["calorie_mape", "macro_match_score", "micronutrient_violation_count", "plan_diversity_score"]
+      },
+      "logger": {
+        "role": "Persist interaction logs, per-user evaluation entries, and model outputs to SQL and optionally S3 for submission.",
+        "schema": {
+          "user_id": "string",
+          "batch_id": "string",
+          "row_index": "int",
+          "input_features": "json",
+          "planner_decision": "json",
+          "retrieved_docs_ids": "json",
+          "model_output": "text",
+          "evaluation_metrics": "json",
+          "timestamp": "datetime"
+        },
+        "storage_backends": ["sqlite", "s3"]
+      }
+    },
+    "multi_agent_coordination": {
+      "pattern": "Planner issues tasks -> Executor executes with RAG context -> Evaluator verifies -> Planner may request re-generation (up to N retries).",
+      "retry_policy": {
+        "max_retries": 2,
+        "reasons_for_retry": ["nutrition_violation", "calorie_deviation_gt_threshold", "empty_model_output"]
+      }
+    }
+  },
+  "lora_finetune": {
+    "objective": "Fine-tune base LLM using LoRA on diet & nutrition conversational + instruction pairs; also include code-style structured outputs (JSON meal objects).",
+    "dataset": {
+      "sources": ["public_recipes.jsonl", "clinical_guidelines.csv", "user_simulated_prompts.jsonl"],
+      "format": "instruction-response pairs with metadata (calories, macros, tags)"
+    },
+    "peft_args": {"r": 8, "alpha": 32, "dropout": 0.05, "target_modules": ["q_proj", "v_proj"]},
+    "training_args": {
+      "per_device_train_batch_size": 8,
+      "gradient_accumulation_steps": 4,
+      "learning_rate": 0.0003,
+      "num_train_epochs": 3,
+      "weight_decay": 0.01,
+      "fp16": true,
+      "save_strategy": "epoch",
+      "output_dir": "models/lora/checkpoints"
+    },
+    "hooks": {
+      "preprocessing_script": "scripts/prepare_finetune_data.py",
+      "train_script": "scripts/train_lora.py",
+      "postprocess": "scripts/convert_lora_to_hf_safe.py"
+    },
+    "validation": {
+      "validation_split": 0.05,
+      "val_set_metrics": ["perplexity", "exact_json_match_rate"]
+    }
+  },
+  "RAG_integration": {
+    "indexing": {
+      "source_paths": ["data/knowledgebase/recipes.csv", "data/knowledgebase/nutrition_guidelines.pdf", "data/knowledgebase/common_foods.csv"],
+      "preprocessing": "scripts/build_rag_index.py",
+      "chunk_size": 512,
+      "overlap": 64,
+      "embedding_model": "$EMBEDDING_MODEL"
+    },
+    "vectorstore": {"type": "faiss", "path": "$VECTOR_DB_PATH", "options": {"n_subquantizers": null}},
+    "retrieval_config": {"top_k": 8, "score_threshold": 0.05, "rerank_with_cross_encoder": false},
+    "citation_policy": "include source_id and short excerpt with each RAG snippet in executor inputs"
+  },
+  "ui": {
+    "streamlit": {
+      "entrypoint": "app/streamlit_app.py",
+      "features": [
+        "Upload batch CSV (spec below)",
+        "Select base model & LoRA checkpoint (dropdown)",
+        "Set user-level constraints (calorie target, allergies, vegetarian/vegan, dislike list)",
+        "Preview per-row planner decisions",
+        "Start batch run, monitor progress in real-time",
+        "Download results (CSV + JSON) with evaluation summary"
+      ],
+      "ui_spec": {
+        "pages": [
+          {"id": "home", "title": "Home & Demo"},
+          {"id": "batch", "title": "Batch CSV Runner"},
+          {"id": "logs", "title": "Evaluation Logs & Metrics"},
+          {"id": "settings", "title": "Model & Index Settings"}
+        ]
+      }
+    },
+    "cli": {
+      "entrypoint": "cli/run_batch.py",
+      "commands": [
+        {"name": "run-batch", "usage": "python -m cli.run_batch --input batch.csv --out results.csv --model lora_path --user-id USER123", "flags": ["--input", "--out", "--model", "--user-id", "--top-k", "--retry-policy"]},
+        {"name": "index", "usage": "python -m cli.index_knowledge --source data/knowledgebase --out $VECTOR_DB_PATH"}
+      ]
+    },
+    "api": {
+      "fastapi_app": "app.api:app",
+      "endpoints": [
+        {"path": "/v1/batch/run", "method": "POST", "description": "Run recommended plans for an uploaded batch CSV (async-friendly, returns job_id)."},
+        {"path": "/v1/logs/{batch_id}", "method": "GET", "description": "Retrieve evaluation logs for a given batch."}
+      ]
+    }
+  },
+  "batch_csv_spec": {
+    "description": "CSV input schema for batch mode. Each row = one user+request.",
+    "required_columns": [
+      {"name": "user_id", "type": "string"},
+      {"name": "age", "type": "int"},
+      {"name": "sex", "type": "string", "allowed": ["M", "F", "Other"]},
+      {"name": "height_cm", "type": "float"},
+      {"name": "weight_kg", "type": "float"},
+      {"name": "activity_level", "type": "string", "allowed": ["sedentary", "light", "moderate", "active", "very_active"]},
+      {"name": "goal", "type": "string", "allowed": ["maintain", "lose", "gain"]},
+      {"name": "calorie_target", "type": "float", "optional": true},
+      {"name": "allergies", "type": "string", "optional": true},
+      {"name": "dietary_pref", "type": "string", "optional": true, "allowed": ["omnivore", "vegetarian", "vegan", "pescatarian"]},
+      {"name": "dislikes", "type": "string", "optional": true}
+    ],
+    "optional_columns": [
+      {"name": "timezone", "type": "string"},
+      {"name": "meal_count_preference", "type": "int"}
+    ],
+    "sample_row": {"user_id": "user_001", "age": 28, "sex": "M", "height_cm": 175, "weight_kg": 70, "activity_level": "moderate", "goal": "maintain", "calorie_target": 2500, "allergies": "peanuts", "dietary_pref": "omnivore", "dislikes": "cilantro"}
+  },
+  "evaluation": {
+    "metrics": {
+      "calorie_mape": {"description": "Mean Absolute Percentage Error between requested calorie_target and predicted plan calories", "goal": "<=0.10"},
+      "macro_match_score": {"description": "Weighted cosine similarity between target macro distribution and plan macro distribution (0..1)", "goal": ">=0.85"},
+      "micronutrient_violation_count": {"description": "Number of flagged micronutrient violations against clinical thresholds", "goal": "0"},
+      "plan_diversity_score": {"description": "Normalized measure of diversity across meals (0..1)", "goal": ">=0.6"},
+      "exact_json_schema_match_rate": {"description": "Percentage of model outputs that match the strict JSON schema (for downstream parsing)", "goal": ">=0.95"}
+    },
+    "evaluation_pipeline": {"validate_schema": "scripts/validate_model_json_output.py", "nutrient_calculation": "scripts/calc_nutrients.py", "scoring": "scripts/compute_metrics.py", "reporting": "scripts/generate_eval_report.py"},
+    "auto_retrain_trigger": {"criteria": [{"metric": "calorie_mape", "threshold": 0.15}, {"metric": "exact_json_schema_match_rate", "threshold": 0.90}], "action": "flag_for_retraining"}
+  },
+  "logging_and_metrics": {
+    "logging_framework": "loguru",
+    "interaction_log_schema": {"request_id": "uuid", "user_id": "string", "batch_id": "string", "agent_stage": "string", "payload": "json", "response": "text", "model_meta": "json", "duration_ms": "int", "timestamp": "iso8601"},
+    "storage": {"primary": "sqlite", "sqlite_url": "$SQLITE_URL", "backup": "s3://$S3_BUCKET/logs (optional)"},
+    "privacy": {"PII_redaction": true, "data_retention_days": 365, "anonymize_user_id": true},
+    "export_hooks": [{"name": "export_csv_results", "script": "scripts/export_results.py", "description": "Create results CSV with evaluation summary per row."}, {"name": "export_submission_package", "script": "scripts/create_submission_package.py", "description": "Zip logs, model meta, index snapshot for assignment submission."}]
+  },
+  "devops_and_ci": {
+    "dockerfile_path": "Dockerfile",
+    "github_actions": {"workflow_file": ".github/workflows/ci.yml", "jobs": [{"name": "lint-and-test", "steps": ["checkout", "setup-python", "pip install -r requirements.txt", "pytest -q", "flake8"]}, {"name": "build-and-push", "steps": ["build docker image", "push to registry (if secrets provided)"]}]},
+    "release": {"artifact": ["models/lora/*.pt", "data/vectorstore/*", "logs/submission_bundle.zip"]}
+  },
+  "deliverables": {
+    "architecture_document": "docs/architecture.md",
+    "fine_tuning_setup": "docs/fine_tuning.md",
+    "evaluation_and_results": "results/evaluation_summary.csv",
+    "interaction_logs": "logs/interactions.sqlite (and optional s3 backup)",
+    "demo_video": "demos/demo.mp4 (recorded with screen + voice-over)",
+    "readme": "README.md"
+  },
+  "examples_and_templates": {
+    "prompts": {"system_prompt_path": "prompts/system_prompt.md", "planner_prompt_template": "prompts/planner_instruction.tpl", "executor_instruct_template": "prompts/executor_instruction.tpl"},
+    "sample_batch_csv": "examples/sample_batch.csv",
+    "sample_results": "examples/sample_results.csv"
+  },
+  "cursor_integration": {
+    "cursor_manifest_version": "1.0",
+    "cursor_files": [
+      {"path": "app/streamlit_app.py", "type": "file"},
+      {"path": "app/api.py", "type": "file"},
+      {"path": "cli/run_batch.py", "type": "file"},
+      {"path": "scripts/train_lora.py", "type": "file"},
+      {"path": "scripts/build_rag_index.py", "type": "file"},
+      {"path": "prompts/system_prompt.md", "type": "file"},
+      {"path": "models/lora/README.md", "type": "file"}
+    ],
+    "cursor_run_commands": [
+      {"name": "Streamlit UI", "cmd": "streamlit run app/streamlit_app.py"},
+      {"name": "Run batch (CLI)", "cmd": "python -m cli.run_batch --input examples/sample_batch.csv --out examples/sample_results.csv --model models/lora/diet-lora.pt --user-id demo_user"}
+    ],
+    "cursor_import_notes": "After importing, add secrets in the Cursor secrets panel (HF_API_TOKEN, S3 creds). Upload your LoRA file (models/lora/diet-lora.pt) and vectorstore (or run the index step)."
+  },
+  "security_and_ethics": {
+    "clinical_disclaimer": "This system provides diet suggestions and is not a medical device. Users with medical conditions should consult a clinician.",
+    "user_consent": "UI includes a consent checkbox before processing PII",
+    "safety_filters": ["flag_extreme_restrictions", "nutrient_deficiency_warnings", "allergy_conflict_block"],
+    "explainability": "Each plan includes short provenance: which docs (doc_id) influenced key decisions and a brief numeric breakdown of calories & macros."
+  },
+  "how_to_get_started": {
+    "quick_start_steps": [
+      "1) Fill .env with env variables (API keys, DB path).",
+      "2) Run `python -m cli.index_knowledge --source data/knowledgebase --out $VECTOR_DB_PATH` to build RAG index.",
+      "3) (Optional) Run LoRA training: `python scripts/train_lora.py --data data/finetune.jsonl --out models/lora/diet-lora.pt`",
+      "4) Start Streamlit: `streamlit run app/streamlit_app.py` or run CLI batch example.",
+      "5) Inspect logs in `data/logs.db` or via UI Logs page."
+    ],
+    "useful_scripts": {
+      "index": "python -m cli.index_knowledge --source data/knowledgebase",
+      "train": "python scripts/train_lora.py --help",
+      "run_local": "python -m cli.run_batch --input examples/sample_batch.csv --out examples/sample_results.csv --model models/lora/diet-lora.pt"
+    }
+  }
+}
+

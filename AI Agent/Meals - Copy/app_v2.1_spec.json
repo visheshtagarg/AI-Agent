@@ -1,0 +1,149 @@
+{
+  "project_name": "Multi-User Meal Recommender (RAG + LoRA)",
+  "display_name": "Smart Diet & Meal Planner Dashboard",
+  "version": "2.1.0",
+  "author": {
+    "name": "Visheshta Garg",
+    "university": "IIT Roorkee",
+    "department": "Civil Engineering",
+    "degree": "B.Tech"
+  },
+  "description": "An AI-driven Meal Recommender with RAG + LoRA that supports both single-user and multi-user batch planning. Displays meal times, nutritional breakdowns, and metrics in a beautifully designed Streamlit dashboard.",
+  "tech_stack": {
+    "language": "Python 3.10+",
+    "frameworks": ["Streamlit", "Transformers", "PEFT", "LangChain (optional)"],
+    "vector_store": ["ChromaDB", "FAISS"],
+    "libraries": ["torch", "datasets", "pandas", "numpy", "sentence-transformers", "cvxpy", "plotly", "loguru"]
+  },
+  "capabilities": {
+    "modes": ["Single-user", "Multi-user (Batch CSV)"],
+    "meal_range": {
+      "min": 1,
+      "max": 6,
+      "default": 3
+    },
+    "meal_timing": {
+      "description": "Each meal includes a Meal_Time column (auto-set or user-defined).",
+      "default_schedule": ["08:00", "13:00", "16:00", "19:30", "21:00"],
+      "user_customizable": true
+    },
+    "supported_goals": [
+      "Weight loss",
+      "Maintenance",
+      "Muscle gain",
+      "Fat loss",
+      "Balanced diet",
+      "Keto",
+      "Low-carb",
+      "High-protein",
+      "Diabetic-friendly",
+      "Heart-healthy",
+      "Pescatarian",
+      "Gluten-free"
+    ]
+  },
+  "input_csv": {
+    "description": "Each row represents one user's dietary profile.",
+    "columns": [
+      "UserID",
+      "Name",
+      "Age",
+      "Gender",
+      "Goal",
+      "Target_Calories",
+      "Diet_Preference",
+      "Meals_Per_Day",
+      "Allergies",
+      "Health_Conditions",
+      "Meal_Times (semicolon-separated)"
+    ],
+    "example_csv": "UserID,Name,Age,Gender,Goal,Target_Calories,Diet_Preference,Meals_Per_Day,Allergies,Health_Conditions,Meal_Times\nuser_001,Aarav,25,Male,Muscle gain,2800,Non-vegetarian,5,None,None,07:30;12:30;16:00;19:30;21:00\nuser_002,Visheshta,22,Female,Weight loss,1800,Vegetarian,3,None,Low sugar,08:00;13:00;19:30"
+  },
+  "agents": [
+    {
+      "name": "PlannerAgent",
+      "role": "Distribute calories across 1–6 meals and assign meal times.",
+      "output_columns": ["Meal", "Meal_Time", "Calories"]
+    },
+    {
+      "name": "RAGRetrieverAgent",
+      "role": "Fetch context-aware meals and nutrition facts using embeddings."
+    },
+    {
+      "name": "MealGeneratorAgent",
+      "role": "Generate balanced meal options using LoRA fine-tuned model grounded on RAG data."
+    },
+    {
+      "name": "OptimizerAgent",
+      "role": "Adjust total calories and macros to fit target distribution."
+    },
+    {
+      "name": "EvaluatorAgent",
+      "role": "Compute deviation, macro match, and diversity metrics."
+    },
+    {
+      "name": "CoachAgent",
+      "role": "Render tabular data and export results as styled CSV."
+    }
+  ],
+  "output": {
+    "columns": [
+      "UserID",
+      "Name",
+      "Goal",
+      "Meals_Per_Day",
+      "Meal",
+      "Meal_Time",
+      "Items",
+      "Meal_Calories",
+      "Total_Calories",
+      "Target_Calories",
+      "Calorie_Deviation_%"
+    ],
+    "single_user": {
+      "display": "Tabular (st.dataframe) + charts + metric cards",
+      "export": ["single_user_meal_plan.csv", "single_user_meal_plan.json"]
+    },
+    "multi_user": {
+      "display": "Merged styled table + evaluation summary",
+      "export": "outputs/multi_user_meal_plans.csv"
+    }
+  },
+  "ui": {
+    "framework": "Streamlit",
+    "entrypoint": "app.py",
+    "theme": {
+      "layout": "wide",
+      "primary_color": "#6E56CF",
+      "secondary_color": "#F4B400",
+      "background_color": "#F8F9FA",
+      "text_color": "#1E1E1E",
+      "accent_color": "#34A853",
+      "font": "Poppins"
+    },
+    "design": {
+      "layout_type": "Dashboard",
+      "tabs": ["🍽️ Single User Planner", "📊 Batch Mode Dashboard"],
+      "sidebar": {
+        "branding": "🥗 Smart Diet Planner",
+        "theme_switcher": true,
+        "info_panel": {
+          "title": "Project Info",
+          "content": [
+            "Multi-Agent AI System",
+            "RAG + LoRA Fine-Tuning",
+            "Developed by Visheshta Garg, IIT Roorkee"
+          ]
+        }
+      }
+    }
+  },
+  "evaluation": {
+    "metrics": {
+      "calorie_mape": "<=10%",
+      "macro_match_score": ">=0.8",
+      "diversity_score": ">=0.6"
+    }
+  }
+}
+
