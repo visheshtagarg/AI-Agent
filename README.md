@@ -97,3 +97,10 @@ Place images in the `assets/` directory:
 ├── logs/                  # Evaluation logs
 └── examples/              # Example CSV templates
 ```
+# 🎥 Project Demonstration
+
+Watch the video demonstration of this project here:
+👉 View Project Output (https://drive.google.com/file/d/1BD-PO6I-zgf54_UXeeIfeoFw_0hdSYNM/view?usp=drive_link)
+
+This video showcases the working of the project, including its key features, functionality, and final results.
+Please ensure you are logged into your Google account to access the video.
