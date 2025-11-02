@@ -1,0 +1,10 @@
+UserID,Name,Age,Gender,Goal,Target_Calories,Diet_Preference,Meals_Per_Day,Allergies,Health_Conditions,Meal_Times,Activity_Level,Cuisine_Preference
+U001,Aarav,25,Male,Muscle gain,2800,Non-vegetarian,5,None,None,07:00;11:30;15:30;19:00;21:30,High,Indian
+U002,Visheshta,22,Female,Weight loss,1800,Vegetarian,3,None,Low sugar,08:00;13:00;19:00,Medium,Continental
+U003,Priya,30,Female,Balanced diet,2000,Vegan,3,Peanuts,None,08:00;13:00;19:30,Low,Indian
+U004,Rahul,28,Male,Weight maintenance,2500,Non-vegetarian,4,None,None,08:00;13:00;16:00;19:30,High,Mixed
+U005,Anjali,35,Female,Diabetic-friendly,1900,Vegetarian,4,None,Diabetes,08:00;13:00;16:00;19:00,Medium,Indian
+U006,John,45,Male,Heart-healthy,2200,Pescatarian,5,Shellfish,None,07:00;12:00;15:00;18:30;20:30,Low,Continental
+U007,Sarah,29,Female,Keto,1600,Non-vegetarian,3,None,None,09:00;14:00;19:00,Medium,Mixed
+U008,Mike,32,Male,High-protein,3000,Non-vegetarian,6,None,None,07:00;10:00;13:00;16:00;19:00;21:30,High,Any
+

@@ -1,0 +1,10 @@
+{
+  "age": 22,
+  "gender": "Female",
+  "goal": "Weight loss",
+  "target_calories": 1800,
+  "diet_pref": "Vegetarian",
+  "meals_per_day": 4,
+  "health_cond": "None"
+}
+

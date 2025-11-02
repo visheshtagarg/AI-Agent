@@ -1,0 +1,250 @@
+{
+  "project_name": "Advanced Diet & Calorie Recommender Agent",
+  "author": {
+    "name": "Visheshta Garg",
+    "university": "IIT Roorkee",
+    "department": "Civil Engineering",
+    "degree": "B.Tech"
+  },
+  "description": "An intelligent multi-agent system that generates personalized, health-aware diet plans. It takes user input such as calorie goals, dietary preferences, and health conditions, then plans optimized daily meals using reasoning, RAG retrieval, and fine-tuned models. The system includes interactive coaching, real-time nutrition lookup, and progress visualization.",
+  "tech_stack": {
+    "language": "Python",
+    "frameworks": [
+      "LangChain",
+      "LangGraph",
+      "Streamlit",
+      "Transformers",
+      "PEFT"
+    ],
+    "libraries": [
+      "torch",
+      "datasets",
+      "pandas",
+      "numpy",
+      "regex",
+      "faiss",
+      "cvxpy",
+      "plotly",
+      "scikit-learn"
+    ],
+    "database": [
+      "ChromaDB",
+      "FAISS Vector Store"
+    ],
+    "optional_integrations": [
+      "Google Fit API",
+      "Nutritionix API",
+      "OpenFoodFacts API"
+    ]
+  },
+  "architecture": {
+    "agents": [
+      {
+        "name": "User Interaction Agent",
+        "function": "Handles conversation with the user. Collects inputs like age, weight, goal, and preferences, and manages dialogue context.",
+        "input": "Natural language or structured text input",
+        "output": "Parsed structured user data"
+      },
+      {
+        "name": "Planner Agent",
+        "function": "Calculates calorie distribution across meals based on user's goal (e.g., 25% breakfast, 35% lunch, etc.) and decides meal structure.",
+        "input": "User profile and health goal",
+        "output": "Calorie distribution plan"
+      },
+      {
+        "name": "Nutritionist Agent",
+        "function": "Generates meal options based on dietary preference and calorie targets using a fine-tuned LoRA model and RAG-based nutrition lookup.",
+        "input": "Calorie plan and user profile",
+        "output": "Meal recommendations with nutritional data"
+      },
+      {
+        "name": "RAG Retriever Agent",
+        "function": "Retrieves verified nutritional information from databases (e.g., USDA, OpenFoodFacts) using ChromaDB or FAISS embeddings.",
+        "input": "Food item queries",
+        "output": "Nutrition facts and references"
+      },
+      {
+        "name": "Optimizer Agent",
+        "function": "Optimizes meal composition using calorie and macronutrient balance (via Linear Programming or Reinforcement Learning).",
+        "input": "Initial meal plan and constraints",
+        "output": "Optimized balanced meal plan"
+      },
+      {
+        "name": "Evaluator Agent",
+        "function": "Evaluates diet plan quality using metrics like calorie accuracy, diversity, and nutrient coverage. Flags imbalance or unsafe suggestions.",
+        "input": "Final meal plan",
+        "output": "Validation report and feedback"
+      },
+      {
+        "name": "Coach Agent",
+        "function": "Engages the user daily with motivational feedback, adaptive advice, and logs user preferences for future personalization.",
+        "input": "User feedback and history",
+        "output": "Adaptive suggestions and daily summary"
+      }
+    ],
+    "flow": "User Interaction → Planner → Nutritionist + RAG Retriever → Optimizer → Evaluator → Coach → Dashboard",
+    "storage": {
+      "memory": "ChromaDB for long-term conversation memory",
+      "logs": "User feedback and daily summaries stored as JSON"
+    }
+  },
+  "fine_tuning": {
+    "base_model": "distilbert-base-uncased",
+    "method": "LoRA (Low-Rank Adaptation)",
+    "dataset": {
+      "source": "Synthetic + open datasets (Indian Food Calorie Dataset, Food.com Recipes, Nutritionix)",
+      "size": 8000,
+      "labels": [
+        "Breakfast",
+        "Lunch",
+        "Dinner",
+        "Snack",
+        "Dessert"
+      ],
+      "format": {
+        "input": "1800 kcal vegetarian weight loss plan",
+        "output": "Breakfast: Oats with banana... Lunch: Brown rice with lentils..."
+      }
+    },
+    "training_params": {
+      "epochs": 8,
+      "batch_size": 16,
+      "learning_rate": 0.0001,
+      "optimizer": "AdamW",
+      "loss_function": "CrossEntropyLoss"
+    }
+  },
+  "evaluation": {
+    "metrics": [
+      "Calorie Accuracy (±5%)",
+      "Macro-Nutrient Balance Score",
+      "Meal Diversity Index",
+      "User Satisfaction (1-5)",
+      "Safety Compliance (no unsafe advice)"
+    ],
+    "targets": {
+      "calorie_accuracy": ">=95%",
+      "user_satisfaction": ">=4.5/5",
+      "safety_compliance": "100%"
+    }
+  },
+  "ui": {
+    "type": "Streamlit",
+    "features": [
+      "Natural language chat for interaction",
+      "Daily diet plan visualization with calorie charts (Plotly)",
+      "Progress tracker (weekly summary graph)",
+      "Downloadable meal plan in CSV/JSON",
+      "Regenerate or customize plan buttons"
+    ]
+  },
+  "optimization_module": {
+    "method": "Linear Programming / Reinforcement Learning",
+    "library": "cvxpy or Stable Baselines3",
+    "objective": "Minimize deviation from target calories while maximizing variety and nutrition",
+    "constraints": [
+      "Total calories = user target ±5%",
+      "Protein ≥ 20% calories",
+      "Fat ≤ 30%",
+      "Avoid allergens"
+    ]
+  },
+  "rag_module": {
+    "description": "Retrieval-Augmented Generation system that grounds food recommendations with verified nutrition data.",
+    "vector_store": "ChromaDB or FAISS",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "data_sources": [
+      "USDA FoodData Central",
+      "OpenFoodFacts",
+      "Nutritionix API"
+    ]
+  },
+  "repo_structure": {
+    "folders": [
+      "app.py",
+      "agents/",
+      "agents/user_interaction_agent.py",
+      "agents/planner_agent.py",
+      "agents/nutritionist_agent.py",
+      "agents/rag_retriever_agent.py",
+      "agents/optimizer_agent.py",
+      "agents/evaluator_agent.py",
+      "agents/coach_agent.py",
+      "models/ (fine-tuned LoRA checkpoints)",
+      "data/ (nutrition datasets)",
+      "notebooks/ (training notebooks)",
+      "dashboard/ (Streamlit visualization components)",
+      "logs/ (user sessions and evaluations)"
+    ]
+  },
+  "requirements": [
+    "streamlit",
+    "langchain",
+    "langgraph",
+    "transformers",
+    "peft",
+    "torch",
+    "datasets",
+    "pandas",
+    "numpy",
+    "regex",
+    "cvxpy",
+    "plotly",
+    "faiss-cpu",
+    "chromadb",
+    "scikit-learn"
+  ],
+  "example_prompt": {
+    "task": "Generate a 1-day vegetarian meal plan for weight loss with 1800 kcal target",
+    "input": {
+      "age": 22,
+      "gender": "Female",
+      "goal": "Weight loss",
+      "target_calories": 1800,
+      "diet_preference": "Vegetarian",
+      "health_condition": "None"
+    },
+    "expected_output": {
+      "Breakfast": {
+        "items": [
+          "Oats with milk and banana"
+        ],
+        "total_calories": 400
+      },
+      "Lunch": {
+        "items": [
+          "Brown rice, lentil curry, salad"
+        ],
+        "total_calories": 600
+      },
+      "Snack": {
+        "items": [
+          "Apple and green tea"
+        ],
+        "total_calories": 200
+      },
+      "Dinner": {
+        "items": [
+          "Vegetable soup, paneer stir-fry, roti"
+        ],
+        "total_calories": 600
+      },
+      "Total": 1800,
+      "Nutrition_Facts": {
+        "Protein": "85g",
+        "Carbs": "220g",
+        "Fats": "50g"
+      }
+    }
+  },
+  "deliverables": [
+    "Source code of the advanced multi-agent prototype",
+    "Fine-tuned LoRA model",
+    "AI agent architecture document",
+    "RAG retrieval and optimization module documentation",
+    "Evaluation metrics report",
+    "Interaction logs with prompts and responses",
+    "Streamlit dashboard screenshots or demo video"
+  ]
+}
+

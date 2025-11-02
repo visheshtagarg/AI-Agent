@@ -1,0 +1,71 @@
+{
+  "project": {
+    "name": "diet-calorie-recommender-agent",
+    "version": "1.1.0",
+    "description": "Multi-agent AI system for batch diet & calorie recommendations using LoRA fine-tuned model, RAG retrieval, and Streamlit UI."
+  },
+  "environment": {
+    "python_version": "3.11",
+    "dependencies": [
+      "transformers",
+      "peft",
+      "datasets",
+      "faiss-cpu",
+      "sentence-transformers",
+      "langchain",
+      "streamlit",
+      "fastapi",
+      "pandas",
+      "numpy",
+      "scikit-learn",
+      "sqlalchemy",
+      "loguru"
+    ],
+    "env": {
+      "BASE_MODEL": "meta-llama/Llama-2-7b-chat-hf",
+      "LORA_PATH": "models/lora/diet-lora.pt",
+      "VECTOR_DB": "data/vectorstore/faiss.index",
+      "EMBEDDING_MODEL": "sentence-transformers/all-MiniLM-L6-v2",
+      "SQLITE_URL": "sqlite:///data/logs.db"
+    }
+  },
+  "architecture": {
+    "agents": {
+      "planner": {
+        "role": "Analyzes batch CSV and user goals to create structured diet objectives.",
+        "inputs": ["user_csv", "preferences"],
+        "outputs": ["user_goals", "retrieval_queries"]
+      },
+      "retriever": {
+        "role": "Fetches relevant recipes and nutrition facts using FAISS + embeddings.",
+        "module": "rag/retriever.py",
+        "config": {
+          "vectorstore_path": "$VECTOR_DB",
+          "embedding_model": "$EMBEDDING_MODEL",
+          "top_k": 5
+        }
+      },
+      "executor": {
+        "role": "Generates meal plans using LoRA fine-tuned LLM with RAG context.",
+        "module": "lora/executor.py",
+        "model": {
+          "base_model": "$BASE_MODEL",
+          "lora_adapter": "$LORA_PATH",
+          "temperature": 0.3,
+          "max_tokens": 512
+        }
+      },
+      "evaluator": {
+        "role": "Evaluates generated outputs with calorie deviation and macro match.",
+        "metrics": ["calorie_mape", "macro_match_score", "diversity_score"],
+        "thresholds": {"calorie_mape": 0.10, "macro_match_score": 0.85}
+      },
+      "logger": {
+        "role": "Logs per-user predictions and metrics to SQLite.",
+        "storage": "$SQLITE_URL"
+      }
+    },
+    "flow": "Planner → Retriever (RAG) → Executor (LoRA) → Evaluator → Logger"
+  }
+}
+
